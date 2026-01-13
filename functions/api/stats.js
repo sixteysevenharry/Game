@@ -7,54 +7,46 @@ const cors = {
 const json = (obj, status = 200, extra = {}) =>
   new Response(JSON.stringify(obj), {
     status,
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      ...cors,
-      ...extra
-    }
+    headers: { "content-type": "application/json; charset=utf-8", ...cors, ...extra }
   })
 
 const getUniverseId = async (placeId) => {
-  const u = `https://apis.roblox.com/universes/v1/places/${placeId}/universe`
-  const r = await fetch(u, { headers: { "user-agent": "cf-pages" } })
+  const r = await fetch(`https://apis.roblox.com/universes/v1/places/${placeId}/universe`)
   if (!r.ok) throw new Error("universe lookup failed")
   const d = await r.json()
-  if (!d || !d.universeId) throw new Error("no universe id")
+  if (!d?.universeId) throw new Error("no universe id")
   return String(d.universeId)
 }
 
 const getGame = async (universeId) => {
-  const u = `https://games.roblox.com/v1/games?universeIds=${encodeURIComponent(universeId)}`
-  const r = await fetch(u, { headers: { "user-agent": "cf-pages" } })
+  const r = await fetch(`https://games.roblox.com/v1/games?universeIds=${encodeURIComponent(universeId)}`)
   if (!r.ok) throw new Error("games fetch failed")
   const d = await r.json()
-  const g = d && Array.isArray(d.data) ? d.data[0] : null
+  const g = Array.isArray(d?.data) ? d.data[0] : null
   if (!g) throw new Error("missing game data")
   return g
 }
 
 const getVotes = async (universeId) => {
-  const u = `https://games.roblox.com/v1/games/votes?universeIds=${encodeURIComponent(universeId)}`
-  const r = await fetch(u, { headers: { "user-agent": "cf-pages" } })
+  const r = await fetch(`https://games.roblox.com/v1/games/votes?universeIds=${encodeURIComponent(universeId)}`)
   if (!r.ok) return { upVotes: null, downVotes: null }
   const d = await r.json()
-  const v = d && Array.isArray(d.data) ? d.data[0] : null
+  const v = Array.isArray(d?.data) ? d.data[0] : null
   if (!v) return { upVotes: null, downVotes: null }
   return { upVotes: v.upVotes ?? null, downVotes: v.downVotes ?? null }
 }
 
 const getIcon = async (universeId) => {
-  const u = `https://thumbnails.roblox.com/v1/games/icons?universeIds=${encodeURIComponent(universeId)}&size=512x512&format=Png&isCircular=false`
-  const r = await fetch(u, { headers: { "user-agent": "cf-pages" } })
+  const r = await fetch(`https://thumbnails.roblox.com/v1/games/icons?universeIds=${encodeURIComponent(universeId)}&size=512x512&format=Png&isCircular=false`)
   if (!r.ok) return null
   const d = await r.json()
-  const item = d && Array.isArray(d.data) ? d.data[0] : null
-  return item && item.imageUrl ? item.imageUrl : null
+  const item = Array.isArray(d?.data) ? d.data[0] : null
+  return item?.imageUrl || null
 }
 
 export const onRequestOptions = async () => new Response(null, { status: 204, headers: cors })
 
-export const onRequestGet = async ({ request, env, ctx }) => {
+export const onRequestGet = async ({ request, ctx }) => {
   const url = new URL(request.url)
   const placeId = url.searchParams.get("placeId") || "122586736038729"
 
@@ -89,7 +81,7 @@ export const onRequestGet = async ({ request, env, ctx }) => {
     const res = json(out, 200, { "cache-control": "public, max-age=30" })
     ctx.waitUntil(cache.put(cacheKey, res.clone()))
     return res
-  } catch (e) {
+  } catch {
     return json({ error: "failed to load stats" }, 502, { "cache-control": "no-store" })
   }
 }
