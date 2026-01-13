@@ -1,0 +1,6 @@
+name = "game"
+main = "src/worker.js"
+compatibility_date = "2026-01-13"
+
+[assets]
+directory = "./public"
