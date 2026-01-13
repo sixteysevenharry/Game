@@ -1,10 +1,8 @@
-const cfg = {
-  placeId: "122586736038729",
-  visitGoal: 10000,
-  refreshMs: 45000
-}
+const cfg = { placeId: "122586736038729", visitGoal: 10000, refreshMs: 45000 }
 
 const el = (id) => document.getElementById(id)
+const setText = (id, v) => { const n = el(id); if (n) n.textContent = v }
+const setImg = (id, src) => { const n = el(id); if (n && src) n.src = src }
 
 const fmt = (n) => {
   const x = Number(n)
@@ -13,9 +11,6 @@ const fmt = (n) => {
 }
 
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v))
-
-const setText = (id, v) => { const n = el(id); if (n) n.textContent = v }
-const setImg = (id, src) => { const n = el(id); if (n && src) n.src = src }
 
 const formatDate = (iso) => {
   if (!iso) return "—"
@@ -27,11 +22,10 @@ const formatDate = (iso) => {
 const makeAch = (title, desc, req, done) => {
   const wrap = document.createElement("div")
   wrap.className = "ach"
-  const state = done ? "complete" : "in progress"
   wrap.innerHTML = `
     <div class="achTop">
       <div class="achTitle">${title}</div>
-      <div class="achState ${done ? "on" : ""}">${state}</div>
+      <div class="achState ${done ? "on" : ""}">${done ? "complete" : "in progress"}</div>
     </div>
     <div class="achDesc">${desc}</div>
     <div class="achReq">${req}</div>
@@ -50,42 +44,12 @@ const renderAchievements = (data) => {
   const playing = Number(data.playing || 0)
 
   const list = [
-    {
-      title: "getting started",
-      desc: "ship a public stats page and keep it updated automatically.",
-      req: "unlock: page is online",
-      done: true
-    },
-    {
-      title: "first milestone",
-      desc: "hit 1,000 visits and prove the game has traction.",
-      req: "unlock: 1,000 visits",
-      done: visits >= 1000
-    },
-    {
-      title: "10k push",
-      desc: "reach the main milestone and celebrate it in your community.",
-      req: "unlock: 10,000 visits",
-      done: visits >= 10000
-    },
-    {
-      title: "fan favorite",
-      desc: "players are saving the experience for later.",
-      req: "unlock: 250 favorites",
-      done: fav >= 250
-    },
-    {
-      title: "well liked",
-      desc: "strong like count shows good retention and quality.",
-      req: "unlock: 500 upvotes",
-      done: up >= 500
-    },
-    {
-      title: "active lobby",
-      desc: "steady concurrency means players are sticking around.",
-      req: "unlock: 25 playing",
-      done: playing >= 25
-    }
+    { title: "getting started", desc: "stats page online and pulling data.", req: "unlock: page is online", done: true },
+    { title: "first milestone", desc: "hit 1,000 visits.", req: "unlock: 1,000 visits", done: visits >= 1000 },
+    { title: "10k push", desc: "reach 10,000 visits.", req: "unlock: 10,000 visits", done: visits >= 10000 },
+    { title: "fan favorite", desc: "players saving the experience.", req: "unlock: 250 favorites", done: fav >= 250 },
+    { title: "well liked", desc: "strong upvote count.", req: "unlock: 500 upvotes", done: up >= 500 },
+    { title: "active lobby", desc: "steady concurrency.", req: "unlock: 25 playing", done: playing >= 25 }
   ]
 
   list.forEach(a => grid.appendChild(makeAch(a.title, a.desc, a.req, a.done)))
@@ -95,14 +59,17 @@ const applyGoal = (visits) => {
   const goal = cfg.visitGoal
   const v = Number(visits || 0)
   const pct = clamp((v / goal) * 100, 0, 100)
+
   setText("goalPct", `${pct.toFixed(1)}%`)
   setText("goalCurrent", fmt(v))
   setText("goalTarget", fmt(goal))
   setText("goalRemaining", fmt(Math.max(0, goal - v)))
+
   const bar = el("goalBar")
   if (bar) bar.style.width = `${pct}%`
+
   const chip = el("goalChip")
-  if (chip) chip.textContent = `goal: ${fmt(goal)} visits`
+  if (chip) chip.textContent = `goal: ${fmt(goal)}`
 }
 
 const applyData = (data) => {
@@ -127,13 +94,14 @@ const applyData = (data) => {
   setText("createdAt", formatDate(data.created))
   setText("updatedAt", data.updated ? `updated: ${formatDate(data.updated)}` : "—")
 
-  const now = new Date()
-  setText("lastUpdated", `refreshed: ${now.toLocaleTimeString()}`)
-  setText("statusPill", "status: online")
-
   setImg("gameIcon", data.iconUrl)
+
   const playBtn = el("playBtn")
   if (playBtn) playBtn.href = data.gameUrl || `https://www.roblox.com/games/${cfg.placeId}`
+
+  setText("statusPill", "status: online")
+  setText("lastUpdated", `refreshed: ${new Date().toLocaleString()}`)
+
   applyGoal(data.visits)
   renderAchievements(data)
 }
@@ -141,8 +109,8 @@ const applyData = (data) => {
 const load = async () => {
   try {
     setText("statusPill", "status: updating")
-    const res = await fetch(`/api/stats?placeId=${encodeURIComponent(cfg.placeId)}`, { cache: "no-store" })
-    if (!res.ok) throw new Error(`bad response: ${res.status}`)
+    const res = await fetch(`./api/stats?placeId=${encodeURIComponent(cfg.placeId)}`, { cache: "no-store" })
+    if (!res.ok) throw new Error(String(res.status))
     const data = await res.json()
     applyData(data)
   } catch {
@@ -150,14 +118,8 @@ const load = async () => {
   }
 }
 
-el("year").textContent = new Date().getFullYear()
+const y = el("year")
+if (y) y.textContent = new Date().getFullYear()
 
 load()
 setInterval(load, cfg.refreshMs)
-
-window.addEventListener("scroll", () => {
-  const top = el("top")
-  if (!top) return
-  if (window.scrollY > 10) top.style.background = "rgba(7,11,20,.78)"
-  else top.style.background = "rgba(7,11,20,.55)"
-}, { passive: true })
